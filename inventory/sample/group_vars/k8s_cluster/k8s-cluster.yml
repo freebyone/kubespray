@@ -87,7 +87,67 @@ kube_pods_subnet: 10.233.64.0/18
 #  - kube_pods_subnet: 10.233.64.0/18
 #  - kube_network_node_prefix: 24
 #  - kubelet_max_pods: 110
-#
+
+kubelet_max_pods: 110
+kubelet_fail_swap_on: true
+kube_apiserver_node_port_range: "30000-32767"
+
+# Feature gates
+feature_gates:
+  RotateKubeletServerCertificate: true
+
+# Admission plugins
+kube_apiserver_enable_admission_plugins:
+  - NodeRestriction
+
+# Addons
+dashboard_enabled: true
+helm_enabled: true
+metrics_server_enabled: true
+ingress_nginx_enabled: true
+local_volume_provisioner_enabled: true
+
+# MetalLB (disabled for VM)
+metallb_enabled: false
+
+# Registry
+registry_enabled: false
+
+# Calico specific
+calico_ipip_mode: "CrossSubnet"
+calico_vxlan_mode: "Never"
+calico_nat_outgoing: true
+calico_auto_detection_method: "first-found"
+
+# Control plane endpoint
+supplementary_addresses_in_ssl_keys: [192.168.56.10, 192.168.56.11, 192.168.56.12]
+
+# Node labels for high-performance node
+node_labels:
+  node1:
+    node-type: "high-performance"
+    storage: "fast"
+  node2:
+    node-type: "control-plane"
+  node3:
+    node-type: "control-plane"
+  node4:
+    node-type: "worker"
+  node5:
+    node-type: "worker"
+
+# Storage class
+default_storage_class: "local-path"
+storage_class:
+  enabled: true
+  is_default: true
+  name: "local-path"
+  provisioner: "rancher.io/local-path"
+  parameters: {}
+  reclaim_policy: Delete
+  volume_binding_mode: WaitForFirstConsumer
+  allow_volume_expansion: false
+  
 # Example:
 # Up to 128 nodes and up to 126 or kubelet_max_pods (the lowest of the two) pods per node:
 #  - kube_pods_subnet: 10.233.64.0/18
@@ -345,7 +405,10 @@ persistent_volumes_enabled: false
 event_ttl_duration: "1h0m0s"
 
 ## Automatically renew K8S control plane certificates on first Monday of each month
-auto_renew_certificates: false
+# Security
+podsecuritypolicy_enabled: false
+network_policy_enabled: true
+auto_renew_certificates: true
 # First Monday of each month
 # auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:00:00"
 
