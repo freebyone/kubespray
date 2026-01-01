@@ -1,0 +1,41 @@
+- name: Fix permissions for Kubespray
+  hosts: all
+  become: yes
+  tasks:
+    - name: Ensure /usr/local/bin exists and is writable
+      file:
+        path: /usr/local/bin
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Check if /usr/local is a symlink
+      stat:
+        path: /usr/local
+      register: usr_local_stat
+
+    - name: Fix /usr/local if it's a symlink
+      file:
+        path: /usr/local
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+      when: usr_local_stat.stat.islnk
+
+    - name: Disable any AppArmor/SELinux protections
+      shell: |
+        setenforce 0 2>/dev/null || true
+        aa-complain /usr/local/bin 2>/dev/null || true
+        aa-complain /usr/bin 2>/dev/null || true
+      ignore_errors: yes
+
+    - name: Check current permissions
+      shell: ls -la /usr/local/bin/
+      register: ls_output
+      changed_when: false
+
+    - name: Debug output
+      debug:
+        var: ls_output.stdout_lines

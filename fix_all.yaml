@@ -1,0 +1,79 @@
+- name: Fix AppArmor and permissions before Kubespray
+  hosts: all
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Check if AppArmor is installed
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: Stop and disable AppArmor if installed
+      ansible.builtin.systemd:
+        name: apparmor
+        state: stopped
+        enabled: false
+      when: "'apparmor' in ansible_facts.packages"
+      ignore_errors: yes
+
+    - name: Unload AppArmor profiles
+      ansible.builtin.shell:
+        cmd: |
+          aa-teardown 2>/dev/null || true
+          service apparmor teardown 2>/dev/null || true
+      when: "'apparmor' in ansible_facts.packages"
+      ignore_errors: yes
+
+    - name: Fix apt permissions
+      ansible.builtin.file:
+        path: /var/lib/apt/extended_states
+        state: touch
+        owner: _apt
+        group: root
+        mode: '0644'
+
+    - name: Fix entire apt directory permissions
+      ansible.builtin.shell:
+        cmd: chown -R _apt:root /var/lib/apt/
+      ignore_errors: yes
+
+    - name: Clean apt cache
+      ansible.builtin.apt:
+        clean: yes
+        autoclean: yes
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install essential packages manually
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - software-properties-common
+          - python3-apt
+          - conntrack
+          - ipvsadm
+          - socat
+          - ebtables
+          - unzip
+        state: present
+        update_cache: yes
+
+- name: Run Kubespray with AppArmor disabled
+  hosts: all
+  become: yes
+  vars:
+    apparmor_enabled: false
+    manage_apt_mark: false
+  roles:
+    - { role: kubespray-defaults }
+    - { role: bootstrap-os }
+    - { role: kubernetes/preinstall }
+    - { role: download }
+    - { role: container-engine }
+    - { role: etcd }
+    - { role: kubernetes/control-plane }
+    - { role: kubernetes/node }
+    - { role: network_plugin }
+    - { role: kubernetes-apps }
