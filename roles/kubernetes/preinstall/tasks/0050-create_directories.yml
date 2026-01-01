@@ -54,12 +54,38 @@
     - ('k8s_cluster' in group_names)
     - kube_cert_dir != kube_cert_compat_dir
 
+- name: Ensure /etc/kubernetes directory exists
+  file:
+    path: /etc/kubernetes
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Ensure pki directory exists before creating link
+  file:
+    path: "{{ kube_cert_dir }}"
+    state: directory
+    mode: '0755'
+  become: true
+  when:
+    - ('k8s_cluster' in group_names)
+
+- name: Create kubernetes kubeadm compat cert dir
+  file:
+    src: /etc/kubernetes/pki
+    dest: /etc/kubernetes/ssl
+    state: link
+    force: yes
+  become: true
+
 - name: Create kubernetes kubeadm compat cert dir (kubernetes/kubeadm issue 1498)
   file:
     src: "{{ kube_cert_dir }}"
     dest: "{{ kube_cert_compat_dir }}"
     state: link
     mode: "0755"
+    force: yes 
+  become: true
   when:
     - ('k8s_cluster' in group_names)
     - kube_cert_dir != kube_cert_compat_dir
@@ -71,6 +97,7 @@
     state: directory
     owner: "{{ kube_owner }}"
     mode: "0755"
+  become: true
   with_items:
     - "/etc/cni/net.d"
     - "/opt/cni/bin"
